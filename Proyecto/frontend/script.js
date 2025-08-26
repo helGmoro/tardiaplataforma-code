@@ -3,7 +3,9 @@ let currentUser = null
 let bots = []
 
 // API Configuration - Configurado para desarrollo local
-const API_BASE_URL = window.location.hostname === "localhost" ? "http://localhost:3000/api" : "/api"
+const API_BASE_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "http://localhost:3000/api"
+  : "/api"
 
 // Initialize app
 document.addEventListener("DOMContentLoaded", () => {
@@ -35,7 +37,6 @@ function setupEventListeners() {
   // Auth forms
   document.getElementById("loginForm").addEventListener("submit", handleLogin)
   document.getElementById("registerForm").addEventListener("submit", handleRegister)
-  document.getElementById("forgotPasswordForm").addEventListener("submit", handleForgotPassword)
 
   // Create bot form
   document.getElementById("createBotForm").addEventListener("submit", handleCreateBot)
@@ -64,12 +65,6 @@ function setupEventListeners() {
     const targetTab = tabBtn.getAttribute("data-tab")
     switchTab(targetTab)
   })
-
-  // Open create bot modal
-  document.getElementById("openCreateBotModal").addEventListener("click", openCreateBotModal)
-
-  // Show forgot password form
-  document.getElementById("showForgotPassword").addEventListener("click", showForgotPassword)
 }
 
 function createSession(user) {
@@ -272,43 +267,6 @@ async function handleRegister(e) {
   }
 }
 
-async function handleForgotPassword(e) {
-  e.preventDefault()
-  console.log("🔑 Intentando recuperación de contraseña...")
-
-  const email = document.getElementById("forgotEmail").value
-
-  try {
-    console.log("📡 Enviando request a:", `${API_BASE_URL}/auth/forgot-password`)
-
-    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email }),
-    })
-
-    const data = await response.json()
-    console.log("📥 Respuesta del servidor:", data)
-
-    if (response.ok) {
-      console.log("✅ Recuperación de contraseña exitosa")
-      showToast("Instrucciones enviadas a tu correo electrónico", "success")
-
-      setTimeout(() => {
-        showAuth()
-      }, 1000)
-    } else {
-      console.log("❌ Error en recuperación de contraseña:", data.message)
-      showToast(data.message || "Error al recuperar la contraseña", "error")
-    }
-  } catch (error) {
-    console.error("💥 Error de conexión:", error)
-    showToast(`Error de conexión: ${error.message}. Verifica que el backend esté ejecutándose.`, "error")
-  }
-}
-
 function logout() {
   console.log("👋 Cerrando sesión...")
   clearSession()
@@ -322,14 +280,11 @@ function showDashboard() {
   console.log("🔄 Mostrando dashboard...")
   const authScreen = document.getElementById("authScreen")
   const dashboardScreen = document.getElementById("dashboardScreen")
-  const resetScreen = document.getElementById("resetPasswordScreen")
   const userEmailElement = document.getElementById("userEmail")
 
   if (authScreen && dashboardScreen) {
     authScreen.classList.remove("active")
     authScreen.style.display = "none"
-    resetScreen.classList.remove("active")
-    resetScreen.style.display = "none"
     dashboardScreen.classList.add("active")
     dashboardScreen.style.display = "block"
 
@@ -347,15 +302,12 @@ function showAuth() {
   console.log("🔄 Mostrando pantalla de autenticación")
   const authScreen = document.getElementById("authScreen")
   const dashboardScreen = document.getElementById("dashboardScreen")
-  const resetScreen = document.getElementById("resetPasswordScreen")
 
   if (authScreen && dashboardScreen) {
     authScreen.classList.add("active")
     authScreen.style.display = "flex"
     dashboardScreen.classList.remove("active")
     dashboardScreen.style.display = "none"
-    resetScreen.classList.remove("active")
-    resetScreen.style.display = "none"
     console.log("✅ Pantalla de auth activada")
   } else {
     console.error("❌ No se encontraron las pantallas")
@@ -736,9 +688,4 @@ function openCreateBotModal() {
       errorDiv.style.display = "none"
     }
   }
-}
-
-function showForgotPassword() {
-  console.log("🔑 Mostrando formulario de recuperación")
-  switchTab("forgot")
 }

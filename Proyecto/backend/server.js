@@ -7,6 +7,8 @@ const path = require("path")
 const { exec } = require("child_process")
 const { promisify } = require("util")
 
+require("dotenv").config({ path: path.join(__dirname, ".env") })
+
 // Enhanced logging con más detalles
 const log = (level, message, data = null) => {
   const timestamp = new Date().toISOString()
@@ -40,11 +42,28 @@ process.on("unhandledRejection", (reason, promise) => {
 })
 
 // Middleware
+
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",")
+  : []
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://plataformatardia.vercel.app"],
-  }),
+    origin: function (origin, callback) {
+      // Permitir requests sin origen (como Postman)
+      if (!origin) return callback(null, true)
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true)
+      } else {
+        console.warn("⛔ Bloqueado por CORS:", origin)
+        return callback(new Error("CORS not allowed: " + origin))
+      }
+    },
+    credentials: true,
+  })
 )
+
 app.use(express.json({ limit: "10mb" }))
 app.use(express.static("public"))
 
@@ -200,38 +219,37 @@ app.post("/api/auth/register", async (req, res) => {
 
 app.post("/api/auth/login", async (req, res) => {
   try {
-    const { email, password } = req.body
-    log("info", "Login attempt", { email })
+    const { email, password } = req.body;
+    log("info", "Login attempt", { email });
 
-    // Find user
-    const [users] = await db.execute("SELECT id, email, password FROM users WHERE email = ?", [email])
+    const [users] = await db.execute("SELECT id, email, password FROM users WHERE email = ?", [email]);
 
     if (users.length === 0) {
-      log("warn", "Login failed - user not found", { email })
-      return res.status(400).json({ message: "Credenciales inválidas" })
+      log("warn", "Login failed - user not found", { email });
+      return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
-    const user = users[0]
-    const validPassword = await bcrypt.compare(password, user.password)
+    const user = users[0];
+    const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
-      log("warn", "Login failed - invalid password", { email })
-      return res.status(400).json({ message: "Credenciales inválidas" })
+      log("warn", "Login failed - invalid password", { email });
+      return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
-    log("info", "User logged in successfully", { email, userId: user.id })
+    log("info", "User logged in successfully", { email, userId: user.id });
     res.json({
       user: { id: user.id, email: user.email },
       message: "Login exitoso",
-    })
+    });
   } catch (error) {
     log("error", "Login error:", {
       message: error.message,
       stack: error.stack,
-    })
-    res.status(500).json({ message: "Error interno del servidor" })
+    });
+    res.status(500).json({ message: "Error interno del servidor" });
   }
-})
+});
 
 const requireUser = (req, res, next) => {
   const userId = req.headers["x-user-id"]
